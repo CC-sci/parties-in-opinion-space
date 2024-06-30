@@ -115,8 +115,6 @@ def main():
     grid = OpinionGrid()
     args = parser.parse_args()
 
-    ssss
-
     # Check whether to simulate 1d Hotelling
     if args.line:
         # Sets voters to be uniform, or zero off the line
