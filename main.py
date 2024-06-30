@@ -114,6 +114,7 @@ def main():
 
     grid = OpinionGrid()
     args = parser.parse_args()
+    # New comment
 
     # Check whether to simulate 1d Hotelling
     if args.line:
