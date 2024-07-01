@@ -103,6 +103,8 @@ def main():
                         help='output observables to the console/standard output')
     parser.add_argument('-H', '--histogram', action='store_true',
                         help='display histograms of the parties\' positions')
+    parser.add_argument('-D', '--distribution', action='store_true',
+                        help='display plots of the voter distribution')
     parser.add_argument('-m', '--mat', action='store_true',
                         help='output tab seperated files for each party, matlab compatible')
     parser.add_argument('-1d', '--line', action='store_true',
@@ -204,7 +206,7 @@ def main():
         plt.title('Party 3')
         figH2.show()
 
-    print(f'Converged after {stepNum} steps.')
+    print(f'Simulated {stepNum} steps.')
 
     # Party step distribution
     # gaussian = MultivariateNormalQMC([0,0], covFactor*np.array([[1,0], [0,1]]))
@@ -216,7 +218,8 @@ def main():
     # plt.show()
 
     # Voter distribution
-    grid.plotDistribution()
+    if args.distribution:
+        grid.plotDistribution()
 
 
 if __name__ == '__main__':
