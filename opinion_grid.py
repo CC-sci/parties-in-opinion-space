@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import math
 from party import Party
 
 
@@ -11,7 +10,7 @@ class OpinionGrid:
     # Make the number odd so there is a centre
     xGrid, yGrid = np.meshgrid(np.linspace(-1, 1, num=101),
                                np.linspace(-1, 1, num=101))
-    weight = np.cos((xGrid**2 + yGrid**2)**0.5 * math.pi/2)**2
+    weight = np.cos((xGrid**2 + yGrid**2)**0.5 * np.pi/2)**2
 
 
     def __init__(self):
@@ -72,8 +71,13 @@ class OpinionGrid:
         distances = np.array(distances)
         closest = np.argmin(distances, axis=0)
         closestParties = np.array(self.parties)[closest]
-        # ToDo: Check explicitly, this is an inverse square law
-        turnoutVotes = self.weight / (1 + distances[closest[0], closest[1]])
+
+        turnoutVotes = np.empty_like(self.weight)
+        # ToDo: Check explicitly, this is an inverse square law, speed up
+        for x in range(0, np.size(self.weight, 0)):
+            for y in range(0, np.size(self.weight, 1)):
+                turnoutVotes[x, y] = self.weight[x, y] / (1 + distances[closest[x, y], x, y])
+        # turnoutVotes = self.weight / (1 + distances[closest[0], closest[1]])
 
         # ToDo: Chokepoint, how can I make this faster
         for index, party in np.ndenumerate(closestParties):
