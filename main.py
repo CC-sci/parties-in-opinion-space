@@ -92,25 +92,25 @@ def main():
     # Set up simulation parameters from the command line
     # First positional argument, then flags (some are boolean, some take args)
     # ArgumentDefaultsHelpFormatter will print default values with --help
-    # ToDo: Verbose, simulation parameters, number of steps, whether to output plots
+    # ToDo: Simulation parameters
     parser = argparse.ArgumentParser(description='Optional Simulation Parameters',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('steps', nargs='?', type=int, default=500,
                         help='the number of steps the simulation runs for')
     parser.add_argument('-o', '--output', type=str, default='output.dat',
                         help='the name of the output file to be overwritten/created')
-    parser.add_argument('-O', '--print', action='store_true',
-                        help='output observables to the console/standard output')
-    parser.add_argument('-H', '--histogram', action='store_true',
-                        help='display histograms of the parties\' positions')
+    # parser.add_argument('-P', '--print', action='store_true',
+    #                     help='output observables to the console/standard output')
+    parser.add_argument('-H', '--nohistogram', action='store_true',
+                        help='supress histograms of the parties\' positions')
+    parser.add_argument('-S', '--scatter', action='store_true',
+                        help='show scatterplot of parties\'s past and final positions')
     parser.add_argument('-D', '--distribution', action='store_true',
                         help='display plots of the voter distribution')
     parser.add_argument('-m', '--mat', action='store_true',
                         help='output tab seperated files for each party, matlab compatible')
     parser.add_argument('-1d', '--line', action='store_true',
                         help='run a one-dimensional Hotelling simulation')
-    parser.add_argument('-p', '--plot', action='store_true',
-                        help='output plots')
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='print status during execution')
 
@@ -124,7 +124,7 @@ def main():
         grid.weight[int(np.size(grid.xGrid, axis=0)/2), :] = 1
         grid.addParties(LineParty.test())
     else:
-        grid.weight[:, :] = 1
+        grid.weight[:, :] = 1; print('Uniform voter distribution')  # temp
         grid.addParties(Party.test())
 
     # Cov matrix, assume identity matrix and scale
@@ -136,18 +136,15 @@ def main():
     j = 0  # 4-measure
 
     # Plotting
-    figSt, axSt = plt.subplots()
-    # ax.scatter(grid.xGrid, grid.yGrid, color='gray', s=1, marker='.')
+    if args.scatter:
+        figSt, axSt = plt.subplots()
 
     if args.verbose:
         print('Setup complete.')
 
-    # ToDo: Some convergence condition
-    # ToDo: The simulation gets ever-slower, why? Should something be cleared?
-    # As converges, usually returns -4 and less often -3 then -2
+    # As 'converges', usually returns -4 and less often -3 then -2
     # Being in a different position becomes much less favourable, similarly
     # could use the magnitude of the Boltzmann factor as a measure
-    # The 4-measure works well (already <20 decent), or limit with steps stepNum
     # The order of parties is randomised during the step to avoid bias through
     # random turn orders. Then the list is sorted again to get the data in the
     # right order. This could be slow, but fine for relatively few parties.
@@ -163,48 +160,41 @@ def main():
         grid.parties.sort(key=lambda p: p.name)
 
         for i, party in enumerate(grid.parties):
-            axSt.scatter(party.position[0], party.position[1], s=10, color='black')
-            positions[i,stepNum] = party.position
+            positions[i, stepNum] = party.position
 
         if args.verbose and stepNum % 50 == 0:
             print(f"Step {stepNum}", end=' ... ')
 
-    for party in grid.parties:
-        axSt.scatter(party.position[0], party.position[1], marker='o', s=150)
+    if args.verbose:
+        print("Printing...")
 
     printTrajectories(args.output, list([p.name for p in grid.parties]),
                       positions, to3D=True)
     if args.mat:
         helper.printTabSeparated(positions)
 
-    # Histograms
-    print('Plotting...')
-    figSt.show() #Todo: Remove
-    print('Shown One')
+    if args.verbose:
+        print('\nFinal positions | votes')
+        [print(f'\t{p.name}: {p.position} | {p.votes} votes') for p in grid.parties]
+        print('Plotting...')
 
-    if args.histogram:
-        figH0, axH0 = plt.subplots()
-        axH0.hist2d(positions[0, :, 0], positions[0, :, 1], bins=25)
-        axH0.set_xlim(-1,1)
-        axH0.set_ylim(-1, 1)
-        axH0.set_facecolor('#440154')
-        plt.title('Party 1')
-        figH0.show()
-        figH1, axH1 = plt.subplots()
-        axH1.hist2d(positions[1, :, 0], positions[1, :, 1], bins=25)  # or hexbin with gridsize=
-        axH1.set_xlim(-1, 1)
-        axH1.set_ylim(-1, 1)
-        axH1.set_facecolor('#440154')
-        plt.title('Party 2')
-        figH1.show()
-        plt.title('Party 2')
-        figH2, axH2 = plt.subplots()
-        axH2.hist2d(positions[2, :, 0], positions[2, :, 1], bins=25)
-        axH2.set_xlim(-1, 1)
-        axH2.set_ylim(-1, 1)
-        axH2.set_facecolor('#440154')
-        plt.title('Party 3')
-        figH2.show()
+    # Generate the scatter plot
+    if args.scatter:
+        axSt.scatter(positions[:, :, 0], positions[:, :, 1], s=10, color='gray')
+        for party in grid.parties:
+            axSt.scatter(party.position[0], party.position[1], marker='o', s=150)
+        figSt.show()
+
+    # Histograms
+    if not args.nohistogram:
+        for i in range(0, len(grid.parties)):
+            figH, axH = plt.subplots()
+            axH.hist2d(positions[i, :, 0], positions[i, :, 1], bins=25)
+            axH.set_xlim(-1,1)
+            axH.set_ylim(-1, 1)
+            axH.set_facecolor('#440154')
+            figH.suptitle(f'Party {i+1}')
+            figH.show()
 
     print(f'Simulated {stepNum} steps.')
 
@@ -213,8 +203,14 @@ def main():
     # sample1 = gaussian.random(512)
     # sample2 = multivariate_normal.rvs([0,0], covFactor*np.array([[1,0], [0,1]]), size=500)
     # plt.scatter(sample1[:,0], sample1[:,1])
+    # plt.axis('square')
+    # plt.ylim(-1,1)
+    # plt.xlim((-1,1))
     # plt.show()
     # plt.scatter(sample2[:,0], sample2[:,1])
+    # plt.axis('square')
+    # plt.ylim(-1, 1)
+    # plt.xlim((-1, 1))
     # plt.show()
 
     # Voter distribution
