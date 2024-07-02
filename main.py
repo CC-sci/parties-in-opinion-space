@@ -84,6 +84,26 @@ def metropolisStep(grid: OpinionGrid, distribution, covariance, volatility):
             # This means Boltzmann is very small so new position much worse
             party.position = initialPos
             exit.append(-4)
+
+    grandCanonical = True  # add to command line
+    if grandCanonical:
+        # Or should every party in the `out' test a step?
+        # Test if a new party should form (then see if one should die)
+        # Create the test party
+        testPosition = [uniform.rvs(-1, 2), uniform.rvs(-1, 2)]
+        testParty = Party('new party', testPosition)
+        grid.parties.append(testParty)
+        mu = None  # some global
+
+        # But now I'd have to recalculate energies, where can I do this most efficiently
+        testVotes = grid.energy()[-1]
+        print(testVotes == testParty.votes)
+        if uniform.rvs() <= np.exp((testVotes - mu)/volatility):
+            # accept
+            pass
+        else:
+            del grid.parties[-1]
+            # Also specifically delete the object for efficiency, or automatic
     return exit
 
 
