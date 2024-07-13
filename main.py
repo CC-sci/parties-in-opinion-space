@@ -1,11 +1,13 @@
 """
-Opinion space dynamics.
+Opinion space party dynamics.
 
 The starting point to model the motion of political parties under
 "gravitational attraction" towards voters. Parties move on a grid towards
 equilibrium to maximise their voters, using Metropolis Monte-Carlo.
 It remains to be seen what form this force takes and also the dimensionality
 of opinion space.
+
+:Author: Christopher Campbell
 """
 # Press ⌃R to execute it or replace it with your code.
 # Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
@@ -22,8 +24,9 @@ from opinion_grid import OpinionGrid
 from party import Party, LineParty
 from helper import printTrajectories
 
-def relativeBoltzmannFactor(e1, e2, temperature):
-    return np.exp((e2-e1)/temperature)
+
+def relativeBoltzmannFactor(e1, e2, temperature, muN=0.0):
+    return np.exp((e2 - e1 - muN) / temperature)
 
 
 # ToDo: What should the distribution be, should I use scipy.stats.qmc
@@ -50,7 +53,7 @@ def metropolisStep(grid: OpinionGrid, distribution, covariance, volatility):
     each party. Many -4's indicate only very unfavourable steps are possible,
     that is they indicate equilibrium.
     :param grid: The grid on which to act
-    :param distribution: The step of a party is drawn from distribution.rvs()
+    :param distribution: The step of a party is drawn from ``distribution.rvs()``
     :param covariance: For step distribution
     :param volatility: Thermal volatility
     :return: exit status
@@ -85,25 +88,29 @@ def metropolisStep(grid: OpinionGrid, distribution, covariance, volatility):
             party.position = initialPos
             exit.append(-4)
 
-    grandCanonical = True  # add to command line
-    if grandCanonical:
-        # Or should every party in the `out' test a step?
-        # Test if a new party should form (then see if one should die)
-        # Create the test party
-        testPosition = [uniform.rvs(-1, 2), uniform.rvs(-1, 2)]
-        testParty = Party('new party', testPosition)
-        grid.parties.append(testParty)
-        mu = None  # some global
-
-        # But now I'd have to recalculate energies, where can I do this most efficiently
-        testVotes = grid.energy()[-1]
-        print(testVotes == testParty.votes)
-        if uniform.rvs() <= np.exp((testVotes - mu)/volatility):
-            # accept
-            pass
-        else:
-            del grid.parties[-1]
-            # Also specifically delete the object for efficiency, or automatic
+        # Grand canonical simulation, varying the number of parties, is not used
+    #     mu = 300.0
+    #     grandCanonical = True
+    #     # removing parties
+    #     if grandCanonical:
+    #         if newVotes < mu and uniform.rvs() <= relativeBoltzmannFactor(-newVotes,
+    #                                         0.0, -mu*len(grid.parties), volatility):
+    #             del grid.parties[i]
+    #
+    # # Maybe don't call on every step
+    # # Maybe take this step with probability [0, 1] < 1/(1+N) where N is the
+    # # number of steps since the last grandCanonical test
+    # if grandCanonical:
+    #     # Test if a new party should form (then see if one should die)
+    #     # Create the test party
+    #     testPosition = [uniform.rvs(-1, 2), uniform.rvs(-1, 2)]
+    #     testParty = Party('New-Party', testPosition)
+    #     grid.parties.append(testParty)
+    #     testVotes = grid.energy()[-1]
+    #     if uniform.rvs() <= relativeBoltzmannFactor(-testVotes, 0.0, volatility, mu*len(grid.parties)):
+    #         pass  # accept
+    #     else:
+    #         del grid.parties[-1]
     return exit
 
 
@@ -151,6 +158,7 @@ def main():
     covFactor = 0.03
     positions = np.zeros((len(grid.parties), args.steps+1, np.ndim(grid.weight)))
     positions[:,0] = [p.position for p in grid.parties]
+    # positions = positions.tolist()  for grand canonical
     stepNum = 0
     j = 0  # 4-measure
 
