@@ -87,6 +87,7 @@ def metropolisStep(grid: OpinionGrid, distribution, covariance, volatility):
             # This means Boltzmann is very small so new position much worse
             party.position = initialPos
             exit.append(-4)
+    return exit
 
         # Grand canonical simulation, varying the number of parties, is not used
     #     mu = 300.0
@@ -111,7 +112,6 @@ def metropolisStep(grid: OpinionGrid, distribution, covariance, volatility):
     #         pass  # accept
     #     else:
     #         del grid.parties[-1]
-    return exit
 
 
 def main():
@@ -121,7 +121,7 @@ def main():
     # ToDo: Simulation parameters
     parser = argparse.ArgumentParser(description='Optional Simulation Parameters',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('steps', nargs='?', type=int, default=500,
+    parser.add_argument('steps', nargs='?', type=int, default=1000,
                         help='the number of steps the simulation runs for')
     parser.add_argument('-o', '--output', type=str, default='output.dat',
                         help='the name of the output file to be overwritten/created')
@@ -151,6 +151,7 @@ def main():
         grid.addParties(LineParty.test())
     else:
         grid.weight[:, :] = 1; print('Uniform voter distribution')  # temp
+        # grid.weight = (grid.xGrid ** 2 + grid.yGrid ** 2) ** 1.5; print('Extreme voters')
         grid.addParties(Party.test())
 
     # Cov matrix, assume identity matrix and scale

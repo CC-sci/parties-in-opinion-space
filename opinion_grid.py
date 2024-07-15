@@ -1,3 +1,5 @@
+import sys
+
 import numpy as np
 import matplotlib.pyplot as plt
 from party import Party
@@ -94,9 +96,9 @@ class OpinionGrid:
             turnoutVotes = np.empty_like(self.weight)
             for xA in range(0, np.size(self.weight, 0)):
                 for yA in range(0, np.size(self.weight, 1)):
-                    turnoutVotes[xA, yA] = self.weight[xA, yA] / (1 + distances[closest[xA, yA], xA, yA])
+                    turnoutVotes[xA, yA] = (self.weight[xA, yA] /
+                                            (1 + distances[closest[xA, yA], xA, yA]))
 
-        # ToDo: Chokepoint, how can I make this faster
         # If I used map it would double the speed, ndindex for just index
         for index, party in np.ndenumerate(closestParties):
             party.votes += turnoutVotes[index]
