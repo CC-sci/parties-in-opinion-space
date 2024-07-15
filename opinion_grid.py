@@ -2,6 +2,7 @@ import sys
 
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.ndimage import center_of_mass
 from party import Party
 
 
@@ -78,6 +79,14 @@ class OpinionGrid:
         distances = np.array(distances)
         closest = np.argmin(distances, axis=0)
         closestParties = np.array(self.parties)[closest]
+
+        # Finds the centre of each party's voters by setting others to zero and
+        # finding the centre of mass in terms of indices
+        # Again a specific map, does not account for real turnout
+        for i in range(len(self.parties)):
+            theseVotes = np.where(closest == i, self.weight, 0.0)
+            self.parties[i].centreOfBase = (np.array(center_of_mass(theseVotes))
+                                            / 50 - 1)
 
         # This is an inverse square law
         # 30-fold speed increase compared to the loop

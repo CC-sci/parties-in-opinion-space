@@ -211,6 +211,7 @@ def main():
         axSt.scatter(positions[:, :, 0], positions[:, :, 1], s=10, color='gray')
         for party in grid.parties:
             axSt.scatter(party.position[0], party.position[1], marker='o', s=150)
+            axSt.scatter(party.centreOfBase[0], party.centreOfBase[1], marker='x', s=100)
         figSt.show()
 
     # Histograms
