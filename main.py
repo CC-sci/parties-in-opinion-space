@@ -71,6 +71,7 @@ def metropolisStep(grid: OpinionGrid, distribution, covariance, volatility, useA
         step = distribution.rvs([0, 0], covariance)
 
         if useActivists:
+            # ToDo: Is this how and where this bias should be, and coefficient
             biasDirection = party.centreOfBase - initialPos
             step += biasDirection**3 * 20
 
@@ -139,8 +140,8 @@ def main():
                         help='display plots of the voter distribution')
     parser.add_argument('-m', '--mat', action='store_true',
                         help='output tab seperated files for each party, matlab compatible')
-    parser.add_argument('-a', '--activists', action='store_false',
-                        help='use activists, introducing a bias to parties towards their own members')
+    parser.add_argument('-a', '--noactivists', action='store_false',
+                        help='suppress activists, which introduce a bias to parties towards their own members')
     parser.add_argument('-1d', '--line', action='store_true',
                         help='run a one-dimensional Hotelling simulation')
     parser.add_argument('-v', '--verbose', action='store_true',
@@ -185,7 +186,7 @@ def main():
     while stepNum < args.steps:
         exit = metropolisStep(grid, multivariate_normal,
                               covFactor*np.array([[1, 0], [0, 1]]), 0.1,
-                              args.activists)
+                              args.noactivists)
 
         if exit[0] == -4 and exit[1] == -4:
             j += 1
