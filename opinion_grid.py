@@ -1,5 +1,3 @@
-import sys
-
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.ndimage import center_of_mass
@@ -35,7 +33,6 @@ class OpinionGrid:
         plt.show()
 
 
-    # Todo: Support for adding one party
     def addParties(self, parties: list):
         for party in parties:
             if isinstance(party, Party):
@@ -132,8 +129,6 @@ class OpinionGrid:
         # plt.colorbar()
         # plt.show()
 
-        # ToDo: Party 1 is favoured because ties are currently given to the lowest index
-        # Might now be fixed because party list is shuffled every turn
         for party in self.parties:
             energies.append(party.votes)
             # print(party.name, party.votes, party.position)
