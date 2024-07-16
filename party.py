@@ -8,7 +8,7 @@ class Party:
         self.name = name
         self.position = np.array(position)
         self.votes = 0
-        self.centreOfBase = None
+        self.centreOfBase = self.position
 
 
     def move(self, x: float, y: float):

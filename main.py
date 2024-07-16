@@ -29,13 +29,13 @@ def relativeBoltzmannFactor(e1, e2, temperature, muN=0.0):
     return np.exp((e2 - e1 - muN) / temperature)
 
 
-# ToDo: What should the distribution be, should I use scipy.stats.qmc
-# ToDo: Currently they can pass each other, maybe alright
+# Parties take Gaussian steps
+# Parties can pass each other, maybe alright
 # Can use stepDis = Distribution([0,0], covariance)
 #         step = stepDis.random(1)
 # or      step = multivariate_normal.rvs([0,0], covariance)
 # Could directly edit ._mean, maybe faster but no checking
-def metropolisStep(grid: OpinionGrid, distribution, covariance, volatility):
+def metropolisStep(grid: OpinionGrid, distribution, covariance, volatility, useActivists):
     """
     Implements the Metropolis-Hastings Monte Carlo algorithm.
 
@@ -69,9 +69,13 @@ def metropolisStep(grid: OpinionGrid, distribution, covariance, volatility):
         initialVotes = party.votes
         initialPos = party.position.copy()
         step = distribution.rvs([0, 0], covariance)
-        party.move(step[0], step[1])
 
-        newVotes = grid.energy()[i]
+        if useActivists:
+            biasDirection = party.centreOfBase - initialPos
+            step += biasDirection**3 * 20
+
+        party.move(step[0], step[1])
+        newVotes = grid.energy()[i]  # ToDo: Needs to be calculated every loop?
 
         # If energetically favourable, accept. If unfavourable, accept with the
         # relative probability of both voters, currently Boltzmann distribution
@@ -135,6 +139,8 @@ def main():
                         help='display plots of the voter distribution')
     parser.add_argument('-m', '--mat', action='store_true',
                         help='output tab seperated files for each party, matlab compatible')
+    parser.add_argument('-a', '--activists', action='store_false',
+                        help='use activists, introducing a bias to parties towards their own members')
     parser.add_argument('-1d', '--line', action='store_true',
                         help='run a one-dimensional Hotelling simulation')
     parser.add_argument('-v', '--verbose', action='store_true',
@@ -178,7 +184,8 @@ def main():
     # right order. This could be slow, but fine for relatively few parties.
     while stepNum < args.steps:
         exit = metropolisStep(grid, multivariate_normal,
-                              covFactor*np.array([[1, 0], [0, 1]]), 0.1)
+                              covFactor*np.array([[1, 0], [0, 1]]), 0.1,
+                              args.activists)
 
         if exit[0] == -4 and exit[1] == -4:
             j += 1
