@@ -5,8 +5,28 @@ from party import Party
 
 
 class OpinionGrid:
+    """
+    A two-dimensional grid on which parties move.
 
-    # ToDo: Customise these in an initialiser, currently they are static
+    The opinion grid is where parties and voters are located. Its most important
+    job is to calculate how many votes every party gets at its current position.
+
+    The grid encodes the position of voters, specifically how many voters/how
+    much weight each grid point/opinion has. For example, it can be a uniform
+    distribution where each point has one vote, or a distribution with a maximum
+    in the centre, etc. It is an abstraction of political views, like a
+    political spectrum if it is limited to one dimension, or a political compass.
+    The grid then assigns voters to a party based on which party is closets, and
+    may also account for factors such as turnout or activists.
+
+    Attributes:
+        parties: List of Party objects on the grid.
+        xGrid: Together with yGrid forms the grid by listing all coordinates in
+               arrays, see ``numpy.meshgrid``.
+        yGrid: See ``xGrid``.
+        weight: Voter distribution, 2D array.
+    """
+
     # Create two lines and take the Cartesian product to generate the grid
     # Make the number odd so there is a centre
     # This meshgrid is actually quite unwieldy, it would be easier if it were
@@ -14,6 +34,7 @@ class OpinionGrid:
     xGrid, yGrid = np.meshgrid(np.linspace(-1, 1, num=101),
                                np.linspace(-1, 1, num=101), indexing='ij')
     weight = np.cos((xGrid**2 + yGrid**2)**0.5 * np.pi/2)**2
+    # weight = np.sin((xGrid**2 + yGrid**2)**0.5 * np.pi/1)**2
 
 
     def __init__(self):
@@ -21,6 +42,7 @@ class OpinionGrid:
 
 
     def plotDistribution(self):
+        """Plots the voter distribution."""
         distribution = plt.figure().add_subplot(projection='3d')
         distribution.plot_surface(self.xGrid, self.yGrid, self.weight)
         plt.show()
@@ -33,7 +55,8 @@ class OpinionGrid:
         plt.show()
 
 
-    def addParties(self, parties: list):
+    def addParties(self, parties: list[Party]):
+        """Adds a list of Party objects to the grid."""
         for party in parties:
             if isinstance(party, Party):
                 self.parties.append(party)
@@ -41,26 +64,40 @@ class OpinionGrid:
                 raise TypeError('Is not an instance of Party')
 
 
-    def findPartyVoters(self, x, y):
+    def findPartyVoters(self, x, y, turnoutParam, activistParam):
         """
         Calculates the points closest to each party and adds their weight to the
         parties' vote count.
 
         The parties and voter distribution are properties of the grid.
         The parameters can be lists (such as the whole grid) in which case this
-        method acts element-wise. This method modifies Party objects.
+        method acts element-wise. `Usually`, x and y will be outputs of
+        ``numpy.meshgrid``. This method modifies Party objects.
 
-        Turnout is accounted for by reducing the given vote according to an
-        inverse square with distance from the party.
+        Turnout is accounted for by reducing the given vote according to a
+        polynomial (default inverse square) with distance from the party.
 
-        ToDo: Currently does not support (x,y) being a single coordinate.
+        Activists are accounted for by weighting the vote by distance from the
+        origin. A positive number favours extremes, a negative number the centre.
+
+        This method also sets the centre of the party's voters. This is the
+        centre of each one's Voronoi polyhedral, weighted by votes, and is a
+        property of the party.
+
+        This method can cause runtime warnings if a party has no votes.
+
+        ToDo: Also calculate real vote to be able to determine winners.
 
         :param x: x-coordinates
-        :type: [float] array (or float)
         :param y: y-coordinates
-        :type: [float] array
-        :return: (distance, closestParties) tuple where can be a tuple of arrays
-        :rtype: tuple of (distance, closestParties)
+        :param float turnoutParam: larger the quicker turnout drops off with distance
+        :param float activistParam: larger the more extreme tendency
+        :return: (distance, closestParties) tuple which can be a tuple of arrays.
+                 `Note:` The first term gives the distance squared of every point
+                  on the grid to every party. Size: (number of parties, x grid
+                  size, y grid size).
+                 The second term gives the nearest ``Party`` instance.
+        :rtype: (ndarray[float], ndarray[float])
         """
         distances = []
 
@@ -73,61 +110,53 @@ class OpinionGrid:
 
         # Distances is e.g. (3,5,5) — (parties, x, y)
         # So this minimises w.r.t. party
+        # The index of the closest party to every point is given by closest. The
+        # corresponding object is in closestParties.
         distances = np.array(distances)
         closest = np.argmin(distances, axis=0)
         closestParties = np.array(self.parties)[closest]
 
         # Finds the centre of each party's voters by setting others to zero and
         # finding the centre of mass in terms of indices
-        # Again a specific map, does not account for real turnout
         for i in range(len(self.parties)):
             theseVotes = np.where(closest == i, self.weight, 0.0)
+            # This can prompt a divide by zero warning if a party has no votes
             self.parties[i].centreOfBase = (np.array(center_of_mass(theseVotes))
                                             / 50 - 1)
 
-        # This is an inverse square law
-        # 30-fold speed increase compared to the loop
+        # This is an inverse square law (for turnoutParameter=1)
+        # 30-fold speed increase compared to for loop
         # This method maps the coordinates to their indices so that a coordinate's
         # value can be used as its index
         # Adds one to translate into the first quadrant, then scales to integer
         xAsInt = np.rint((self.xGrid + 1) * 50).astype(int)
         yAsInt = np.rint((self.yGrid + 1) * 50).astype(int)
-        turnoutVotes = self.weight / (1 + distances[closest[xAsInt, yAsInt],
-                                                    xAsInt, yAsInt])
-
-        # ToDo: If the mapping above doesn't work, it should use this
-        # The map is specific to meshgrid(np.linspace(-1, 1, num=101),
-        #                                 np.linspace(-1, 1, num=101), indexing='ij')
-        if False:
-            turnoutVotes = np.empty_like(self.weight)
-            for xA in range(0, np.size(self.weight, 0)):
-                for yA in range(0, np.size(self.weight, 1)):
-                    turnoutVotes[xA, yA] = (self.weight[xA, yA] /
-                                            (1 + distances[closest[xA, yA], xA, yA]))
+        turnoutVotes = self.weight / ((1 + distances[closest[xAsInt, yAsInt],
+                                                    xAsInt, yAsInt]) ** turnoutParam)
+        # This is the effect of extreme activists on a party
+        activistVotes = turnoutVotes * ((x**2 + y**2) ** activistParam)
 
         # If I used map it would double the speed, ndindex for just index
         for index, party in np.ndenumerate(closestParties):
-            party.votes += turnoutVotes[index]
+            party.votes += activistVotes[index]
 
         # Returns distance and closest party of every point
         # But I don't currently use this
-        return np.sqrt(distances), closestParties
+        return distances, closestParties
 
 
-    def energy(self):
-        distance, party = self.findPartyVoters(self.xGrid, self.yGrid)
+    def energy(self, turnoutParameter, activistParameter):
+        """
+        Public-facing method for calculating all parties' energies/votes.
+
+        This method calls ``findPartyVoters`` on the whole grid.
+        :param float turnoutParameter: Degree of vote falloff with distance.
+        :param float activistParameter: Degree of vote increase with polarisation.
+        :return: List of votes of each party in ``parties``.
+        """
+        distanceSquared, closestParty = self.findPartyVoters(self.xGrid, self.yGrid,
+                                                             turnoutParameter, activistParameter)
         energies = []
-
-        # Plots
-        # distribution = plt.figure().add_subplot(projection='3d')
-        # # distribution.plot_surface(self.xGrid, self.yGrid, distance[0])
-        # distribution.plot_surface(self.xGrid, self.yGrid, distance[1])
-        # # #distribution.plot_surface(self.xGrid, self.yGrid, distance[2])
-        # plt.show()
-
-        # plt.contourf(self.xGrid, self.yGrid, distance[0])
-        # plt.colorbar()
-        # plt.show()
 
         for party in self.parties:
             energies.append(party.votes)
