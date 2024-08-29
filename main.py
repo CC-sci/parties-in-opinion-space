@@ -235,9 +235,7 @@ def main():
             axH.set_ylim(-1, 1)
             axH.set_facecolor('#440154')
             figH.suptitle(f'Party {i+1}')
-            plt.ion()
             figH.show()
-            plt.show()
 
     print(f'Simulated {stepNum} steps.')
 
