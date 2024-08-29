@@ -126,7 +126,7 @@ def main():
     # Set up simulation parameters from the command line
     # First positional argument, then flags (some are boolean, some take args)
     # ArgumentDefaultsHelpFormatter will print default values with --help
-    # ToDo: Volatility, number of parties, final distribution setting, different parties
+    # ToDo: Volatility, final distribution setting, different parties, history of winners
     parser = argparse.ArgumentParser(description='Optional Simulation Parameters',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('steps', nargs='?', type=int, default=500,
@@ -143,6 +143,8 @@ def main():
                         help='output tab seperated files for each party')
     parser.add_argument('-M', '--matpol', action='store_true',
                         help='run MATLAB routine to calculate polarisation')
+    parser.add_argument('-n', '--number', type=int,
+                        help='set the number of parties, otherwise 2 if -1d or 4')
     parser.add_argument('-p1', '--turnoutparameter', type=float, default=1.0,
                         help='scales effects of imperfect turnout, farther voters contribute less')
     parser.add_argument('-p2', '--activistparameter', type=float, default=0.5,
@@ -157,16 +159,23 @@ def main():
     args = parser.parse_args()
     print(args.turnoutparameter, args.activistparameter)  # Temp
 
+    # Default party number if not set
+    if args.number is None:
+        if args.line:
+            args.number = 2
+        else:
+            args.number = 4
+
     # Check whether to simulate 1d Hotelling
     if args.line:
         # Sets voters to be uniform, or zero off the line
         grid.weight = np.zeros_like(grid.weight)
-        grid.weight[int(np.size(grid.xGrid, axis=0)/2), :] = 1
-        grid.addParties(LineParty.test())
+        grid.weight[:, int(np.size(grid.xGrid, axis=1)/2)] = 1
+        grid.addParties(LineParty.test(args.number))
     else:
         grid.weight[:, :] = 1; print('Uniform voter distribution')  # temp
         # grid.weight = (grid.xGrid ** 2 + grid.yGrid ** 2) ** 1.5; print('Extreme voters')
-        grid.addParties(Party.test())
+        grid.addParties(Party.test(args.number))
 
     # Cov matrix, assume identity matrix and scale
     # FWQM about 1.6651 sqrt(var)
@@ -237,6 +246,7 @@ def main():
             figH.suptitle(f'Party {i+1}')
             figH.show()
 
+    plt.show()
     print(f'Simulated {stepNum} steps.')
 
     if args.matpol:

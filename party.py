@@ -40,17 +40,16 @@ class Party:
 
 
     @classmethod
-    def test(cls):
+    def test(cls, n):
         """
-        Create and return four parties at random positions.
+        Create and return `n` parties at random positions.
+        :param int n: Number of parties.
         :return: A list of party objects.
         """
-        party1 = Party.oneTest(position=[uniform.rvs(-1, 2), uniform.rvs(-1, 2)])
-        party2 = Party.oneTest('Party-2', [uniform.rvs(-1, 2), uniform.rvs(-1, 2)])
-        party3 = Party.oneTest('Party-3', [uniform.rvs(-1, 2), uniform.rvs(-1, 2)])
-        party4 = Party.oneTest('Party-4', [uniform.rvs(-1, 2), uniform.rvs(-1, 2)])
-
-        return [party1, party2, party3, party4]
+        parties = []
+        for i in range(n):
+            parties.append(Party.oneTest(f'Party-{i+1}', [uniform.rvs(-1, 2), uniform.rvs(-1, 2)]))
+        return parties
 
 
     @classmethod
@@ -75,11 +74,11 @@ class LineParty(Party):
 
 
     @classmethod
-    def test(cls):
+    def test(cls, n):
         """
-        Instantiates and returns two parties at random positions on the line.
+        Instantiates and returns `n` parties at random positions on the line.
         """
-        party1 = LineParty.oneTest('Party-1', [-uniform.rvs(), 0])
-        party2 = LineParty.oneTest('Party-2', [uniform.rvs(), 0])
-
-        return [party1, party2]
+        parties = []
+        for i in range(n):
+            parties.append(LineParty.oneTest(f'Party-{i+1}', [-uniform.rvs(), 0]))
+        return parties

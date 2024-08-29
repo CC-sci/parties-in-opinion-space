@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.ndimage import center_of_mass
@@ -120,10 +121,11 @@ class OpinionGrid:
         # Finds the centre of each party's voters by setting others to zero and
         # finding the centre of mass in terms of indices
         for i in range(len(self.parties)):
-            theseVotes = np.where(closest == i, self.weight, 0.0)
-            # This can prompt a divide by zero warning if a party has no votes
-            self.parties[i].centreOfBase = (np.array(center_of_mass(theseVotes))
-                                            / 50 - 1)
+            with warnings.catch_warnings(action='ignore', category=RuntimeWarning):
+                theseVotes = np.where(closest == i, self.weight, 0.0)
+                # This can prompt a divide by zero warning if a party has no votes
+                self.parties[i].centreOfBase = (np.array(center_of_mass(theseVotes))
+                                                / 50 - 1)
 
         # This is an inverse square law (for turnoutParameter=1)
         # 30-fold speed increase compared to for loop
