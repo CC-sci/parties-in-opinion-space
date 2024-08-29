@@ -126,7 +126,7 @@ def main():
     # Set up simulation parameters from the command line
     # First positional argument, then flags (some are boolean, some take args)
     # ArgumentDefaultsHelpFormatter will print default values with --help
-    # ToDo: Volatility, number of parties, final distribution setting
+    # ToDo: Volatility, number of parties, final distribution setting, different parties
     parser = argparse.ArgumentParser(description='Optional Simulation Parameters',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('steps', nargs='?', type=int, default=500,
@@ -208,8 +208,11 @@ def main():
         helper.printTabSeparated(positions)
 
     if args.verbose:
-        print('\nFinal positions | votes')
-        [print(f'\t{p.name}: {p.position} | {p.votes} votes') for p in grid.parties]
+        print('\nFinal positions | votes | real votes')
+        [print(f'\t{p.name}: {p.position} | {p.votes:.1f} votes | {p.realVotes:.1f} real votes') for p in grid.parties]
+        print(f'\033[4m{max(grid.parties, key=lambda p: p.votes).name}\033[0m won, but '
+              f'\033[4m{max(grid.parties, key=lambda p: p.realVotes).name}\033[0m '
+              f'won by votes excluding activist influence.')
         print('Plotting...')
 
     # Generate the scatter plot
@@ -232,7 +235,9 @@ def main():
             axH.set_ylim(-1, 1)
             axH.set_facecolor('#440154')
             figH.suptitle(f'Party {i+1}')
+            plt.ion()
             figH.show()
+            plt.show()
 
     print(f'Simulated {stepNum} steps.')
 

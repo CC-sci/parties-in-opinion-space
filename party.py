@@ -12,6 +12,7 @@ class Party:
         name: A label.
         position: The current position in 2D.
         votes: The current votes/energy.
+        realVotes: The current votes not accounting for activists.
         centreOfBase: The location of the centre of the party's voters, i.e. its weighted Voronoi polyhedral.
 
     Public Methods:
@@ -25,6 +26,7 @@ class Party:
         self.name = name
         self.position = np.array(position)
         self.votes = 0
+        self.realVotes = 0
         self.centreOfBase = self.position
 
 

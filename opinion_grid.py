@@ -19,6 +19,9 @@ class OpinionGrid:
     The grid then assigns voters to a party based on which party is closets, and
     may also account for factors such as turnout or activists.
 
+    Note the actual number of votes is not usually meaningful, only the ranking
+    between parties.
+
     Attributes:
         parties: List of Party objects on the grid.
         xGrid: Together with yGrid forms the grid by listing all coordinates in
@@ -86,8 +89,6 @@ class OpinionGrid:
 
         This method can cause runtime warnings if a party has no votes.
 
-        ToDo: Also calculate real vote to be able to determine winners.
-
         :param x: x-coordinates
         :param y: y-coordinates
         :param float turnoutParam: larger the quicker turnout drops off with distance
@@ -106,7 +107,7 @@ class OpinionGrid:
             # There is no need for expensive sqrt here since ranking unchanged
             thisDistance = (party.position[0]-x)**2 + (party.position[1]-y)**2
             distances.append(thisDistance)
-            party.votes = 0
+            party.votes, party.realVotes = 0, 0
 
         # Distances is e.g. (3,5,5) — (parties, x, y)
         # So this minimises w.r.t. party
@@ -139,6 +140,7 @@ class OpinionGrid:
         # If I used map it would double the speed, ndindex for just index
         for index, party in np.ndenumerate(closestParties):
             party.votes += activistVotes[index]
+            party.realVotes += turnoutVotes[index]
 
         # Returns distance and closest party of every point
         # But I don't currently use this
