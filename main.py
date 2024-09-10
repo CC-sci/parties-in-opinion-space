@@ -30,7 +30,7 @@ def relativeBoltzmannFactor(e1, e2, temperature, muN=0.0):
 
 
 def metropolisStep(grid: OpinionGrid, distribution, covariance, volatility,
-                   turnoutParameter, activistParameter):
+                   ordering: bool, turnoutParameter, activistParameter):
     """
     Implements the Metropolis-Hastings Monte Carlo algorithm.
 
@@ -61,7 +61,8 @@ def metropolisStep(grid: OpinionGrid, distribution, covariance, volatility,
     :param grid: The grid on which to act
     :param distribution: The step of a party is drawn from ``distribution.rvs()``
     :param covariance: For step distribution
-    :param float volatility: Thermal volatility
+    :param float volatility: Thermal volatility i.e. 'temperature'
+    :param bool ordering: Preserve ordering on the line
     :param float turnoutParameter: The higher this number the quicker the voter falloff
     :param float activistParameter: How effective activists are
     :return: exit status
@@ -70,6 +71,7 @@ def metropolisStep(grid: OpinionGrid, distribution, covariance, volatility,
     # Randomise the turn order (modifies original rather than copying)
     shuffle(grid.parties)
     exit = []
+    if ordering: initialOrdering = sorted(grid.parties, key=lambda p: p.position[0])
 
     for i, party in enumerate(grid.parties):
         # The copy() is necessary because otherwise point to same memory
@@ -86,6 +88,8 @@ def metropolisStep(grid: OpinionGrid, distribution, covariance, volatility,
         if abs(party.position[0]) > 1 or abs(party.position[1]) > 1:
             party.position = initialPos
             exit.append(-1)
+        elif ordering and (initialOrdering != sorted(grid.parties, key=lambda p: p.position[0])):
+                party.position = initialPos
         elif initialVotes < newVotes:
             exit.append(-2)
         elif uniform.rvs() <= relativeBoltzmannFactor(initialVotes, newVotes, volatility):
@@ -131,6 +135,8 @@ def main():
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('steps', nargs='?', type=int, default=500,
                         help='the number of steps the simulation runs for')
+    parser.add_argument('-1d', '--line', action='store_true',
+                        help='run a one-dimensional Hotelling simulation')
     parser.add_argument('-o', '--output', type=str, default='output.dat',
                         help='the name of the output file to be overwritten/created')
     parser.add_argument('-H', '--nohistogram', action='store_true',
@@ -145,19 +151,23 @@ def main():
                         help='run MATLAB routine to calculate polarisation')
     parser.add_argument('-n', '--number', type=int,
                         help='set the number of parties, otherwise 2 if -1d or 4')
+    parser.add_argument('-r', '--ranking', action='store_true',
+                        help='preserve the left-right ordering of the parties, requires --line')
     parser.add_argument('-p1', '--turnoutparameter', type=float, default=1.0,
                         help='scales effects of imperfect turnout, farther voters contribute less')
     parser.add_argument('-p2', '--activistparameter', type=float, default=0.5,
                         help='scales how effectively activists influence their parties, positive '
                              'value gives a tendency towards extremes, negative a central tendency')
-    parser.add_argument('-1d', '--line', action='store_true',
-                        help='run a one-dimensional Hotelling simulation')
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='print status during execution')
 
     grid = OpinionGrid()
     args = parser.parse_args()
     print(args.turnoutparameter, args.activistparameter)  # Temp
+
+    if args.ranking and not args.line:
+        args.line = True
+        print('Incompatible options (--ranking). Set --line to True.')
 
     # Default party number if not set
     if args.number is None:
@@ -170,16 +180,17 @@ def main():
     if args.line:
         # Sets voters to be uniform, or zero off the line
         grid.weight = np.zeros_like(grid.weight)
-        grid.weight[:, int(np.size(grid.xGrid, axis=1)/2)] = 1
+        # grid.weight[:, int(np.size(grid.xGrid, axis=1)/2)] = 1; print("Uniform") # temp
+        grid.weight[:, int(np.size(grid.xGrid, axis=1)/2)] = np.cos(grid.xGrid[:,0] * np.pi/2)**2; print("Single-peaked")
         grid.addParties(LineParty.test(args.number))
     else:
-        grid.weight[:, :] = 1; print('Uniform voter distribution')  # temp
+        # grid.weight[:, :] = 1; print('Uniform voter distribution')  # temp
         # grid.weight = (grid.xGrid ** 2 + grid.yGrid ** 2) ** 1.5; print('Extreme voters')
         grid.addParties(Party.test(args.number))
 
     # Cov matrix, assume identity matrix and scale
     # FWQM about 1.6651 sqrt(var)
-    covFactor = 0.03
+    covFactor = 0.02
     covMatrix = covFactor*np.array([[1, 0], [0, 1]])
     positions = np.zeros((len(grid.parties), args.steps+1, np.ndim(grid.weight)))
     positions[:, 0] = [p.position for p in grid.parties]
@@ -196,9 +207,10 @@ def main():
     # The order of parties is randomised during the step to avoid bias through
     # random turn orders. Then the list is sorted again to get the data in the
     # right order. This could be slow, but fine for relatively few parties.
+    # The system is not particularly temperature-sensitive, values above 1 blur
     while stepNum < args.steps:
-        metropolisStep(grid, multivariate_normal, covMatrix, 0.1,
-                       args.turnoutparameter, args.activistparameter)
+        metropolisStep(grid, multivariate_normal, covMatrix, 1e-30,
+                       args.ranking, args.turnoutparameter, args.activistparameter)
 
         stepNum += 1
         grid.parties.sort(key=lambda p: p.name)
