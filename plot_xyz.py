@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """
-Simple plotting of XYZ files using matplotlib animations.
+© Joe Zuntz
+This code was written by Joe Zuntz, used with permission.
+Available at https://github.com/joezuntz/plot_xyz
 
-Author: Joe Zuntz(?), Computer Modelling course material.
+Simple plotting of XYZ files using matplotlib animations.
 """
 import sys
 import collections
