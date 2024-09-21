@@ -29,20 +29,20 @@ class OpinionGrid:
                arrays, see ``numpy.meshgrid``.
         yGrid: See ``xGrid``.
         weight: Voter distribution, 2D array.
+        turnout: Array of turnout without activist correction and turnout with activists
     """
-
     # Create two lines and take the Cartesian product to generate the grid
     # Make the number odd so there is a centre
     # This meshgrid is actually quite unwieldy, it would be easier if it were
     # scaled so that all coordinates were integers
     xGrid, yGrid = np.meshgrid(np.linspace(-1, 1, num=101),
                                np.linspace(-1, 1, num=101), indexing='ij')
-    weight = np.cos((xGrid**2 + yGrid**2)**0.5 * np.pi/2)**2
-    # weight = np.sin((xGrid**2 + yGrid**2)**0.5 * np.pi/1)**2
+    turnout = np.zeros(2)
 
 
     def __init__(self):
         self.parties = []
+        self.weight = np.exp(-(self.xGrid ** 2 + self.yGrid ** 2)) ** 2
 
 
     def plotDistribution(self):
@@ -120,6 +120,7 @@ class OpinionGrid:
 
         # Finds the centre of each party's voters by setting others to zero and
         # finding the centre of mass in terms of indices
+        # This is displayed but no longer used in calculations, delete for performance
         for i in range(len(self.parties)):
             with warnings.catch_warnings(action='ignore', category=RuntimeWarning):
                 theseVotes = np.where(closest == i, self.weight, 0.0)
@@ -143,6 +144,15 @@ class OpinionGrid:
         for index, party in np.ndenumerate(closestParties):
             party.votes += activistVotes[index]
             party.realVotes += turnoutVotes[index]
+
+        # Calculate turnout percentages with and without activists
+        turnout = 0
+        turnoutReal = 0
+        for party in self.parties:
+            turnout += party.votes
+            turnoutReal += party.realVotes
+        self.turnout[0] = turnoutReal / np.sum(self.weight)*100
+        self.turnout[1] = turnout / np.sum(self.weight * ((x**2 + y**2) ** activistParam))*100
 
         # Returns distance and closest party of every point
         # But I don't currently use this

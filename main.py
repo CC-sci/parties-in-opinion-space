@@ -89,7 +89,7 @@ def metropolisStep(grid: OpinionGrid, distribution, covariance, volatility,
             party.position = initialPos
             exit.append(-1)
         elif ordering and (initialOrdering != sorted(grid.parties, key=lambda p: p.position[0])):
-                party.position = initialPos
+            party.position = initialPos
         elif initialVotes < newVotes:
             exit.append(-2)
         elif uniform.rvs() <= relativeBoltzmannFactor(initialVotes, newVotes, volatility):
@@ -130,7 +130,8 @@ def main():
     # Set up simulation parameters from the command line
     # First positional argument, then flags (some are boolean, some take args)
     # ArgumentDefaultsHelpFormatter will print default values with --help
-    # ToDo: Volatility, final distribution setting, different parties, history of winners
+    # History of winners would be a good addition if party-specific or
+    #  asymmetric situations were introduced
     parser = argparse.ArgumentParser(description='Optional Simulation Parameters',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('steps', nargs='?', type=int, default=500,
@@ -158,12 +159,17 @@ def main():
     parser.add_argument('-p2', '--activistparameter', type=float, default=0.5,
                         help='scales how effectively activists influence their parties, positive '
                              'value gives a tendency towards extremes, negative a central tendency')
+    parser.add_argument('-d', '--distributionchoice', choices=['s', 'm', 'u'], default='s',
+                        help='choose the voter distribution, either with a single central '
+                             'peak (s), a more mildly peaked distribution (m) or the '
+                             'uniform distribution (u)')
+    parser.add_argument('-s', '--stats', action='store_true',
+                        help='print detailed results after the simulation')
     parser.add_argument('-v', '--verbose', action='store_true',
-                        help='print status during execution')
+                        help='print status during execution (includes -s)')
 
     grid = OpinionGrid()
     args = parser.parse_args()
-    print(args.turnoutparameter, args.activistparameter)  # Temp
 
     if args.ranking and not args.line:
         args.line = True
@@ -176,17 +182,26 @@ def main():
         else:
             args.number = 4
 
-    # Check whether to simulate 1d Hotelling
+    # Check whether to simulate 1d Hotelling and set the distribution
     if args.line:
-        # Sets voters to be uniform, or zero off the line
         grid.weight = np.zeros_like(grid.weight)
-        # grid.weight[:, int(np.size(grid.xGrid, axis=1)/2)] = 1; print("Uniform") # temp
-        grid.weight[:, int(np.size(grid.xGrid, axis=1)/2)] = np.cos(grid.xGrid[:,0] * np.pi/2)**2; print("Single-peaked")
         grid.addParties(LineParty.test(args.number))
+        match args.distributionchoice:
+            case 's':
+                grid.weight[:, int(np.size(grid.xGrid, axis=1)/2)] = np.cos(grid.xGrid[:, 0] * np.pi/2)**2
+            case 'm':
+                grid.weight[:, int(np.size(grid.xGrid, axis=1)/2)] = np.cos(grid.xGrid[:, 0] * np.pi/2)**0.5
+            case 'u':
+                grid.weight[:, int(np.size(grid.xGrid, axis=1)/2)] = 1
     else:
-        # grid.weight[:, :] = 1; print('Uniform voter distribution')  # temp
-        # grid.weight = (grid.xGrid ** 2 + grid.yGrid ** 2) ** 1.5; print('Extreme voters')
         grid.addParties(Party.test(args.number))
+        match args.distributionchoice:
+            case 's':
+                pass
+            case 'm':
+                grid.weight = grid.weight ** 0.25
+            case 'u':
+                grid.weight[:, :] = 1
 
     # Cov matrix, assume identity matrix and scale
     # FWQM about 1.6651 sqrt(var)
@@ -194,6 +209,7 @@ def main():
     covMatrix = covFactor*np.array([[1, 0], [0, 1]])
     positions = np.zeros((len(grid.parties), args.steps+1, np.ndim(grid.weight)))
     positions[:, 0] = [p.position for p in grid.parties]
+    turnouts = np.zeros((2, args.steps+1))
     # positions = positions.tolist()  for grand canonical
     stepNum = 0
 
@@ -202,8 +218,11 @@ def main():
         figSt, axSt = plt.subplots()
 
     if args.verbose:
+        print(args.turnoutparameter, args.activistparameter)
         print('Setup complete.')
 
+    # Core simulation loop
+    # --------------------
     # The order of parties is randomised during the step to avoid bias through
     # random turn orders. Then the list is sorted again to get the data in the
     # right order. This could be slow, but fine for relatively few parties.
@@ -213,6 +232,7 @@ def main():
                        args.ranking, args.turnoutparameter, args.activistparameter)
 
         stepNum += 1
+        turnouts[:, stepNum] = grid.turnout
         grid.parties.sort(key=lambda p: p.name)
         for i, party in enumerate(grid.parties):
             positions[i, stepNum] = party.position
@@ -228,12 +248,18 @@ def main():
     if args.tab:
         helper.printTabSeparated(positions)
 
-    if args.verbose:
-        print('\nFinal positions | votes | real votes')
-        [print(f'\t{p.name}: {p.position} | {p.votes:.1f} votes | {p.realVotes:.1f} real votes') for p in grid.parties]
+    if args.verbose or args.stats:
+        print('\nFinal positions | votes | non-activist votes')
+        [print(f'\t{p.name}: {p.position} | {p.votes:.1f} votes | {p.realVotes:.1f} non-activist votes') for p in grid.parties]
         print(f'\033[4m{max(grid.parties, key=lambda p: p.votes).name}\033[0m won, but '
               f'\033[4m{max(grid.parties, key=lambda p: p.realVotes).name}\033[0m '
               f'won by votes excluding activist influence.')
+        print(f'\nTurnout without activists was {grid.turnout[0]:.1f}% after the'
+              f' end of the simulation and on average {np.mean(turnouts[0, 1:]):.1f}%.')
+        print(f'Turnout with activists was {grid.turnout[1]:.1f}% after the'
+              f' end of the simulation and on average {np.mean(turnouts[1, 1:]):.1f}%.')
+
+    if args.verbose:
         print('Plotting...')
 
     # Generate the scatter plot
@@ -254,6 +280,8 @@ def main():
             axH.hist2d(positions[i, :, 0], positions[i, :, 1], bins=25)
             axH.set_xlim(-1, 1)
             axH.set_ylim(-1, 1)
+            axH.set_xlabel('x')
+            axH.set_ylabel('y')
             axH.set_facecolor('#440154')
             figH.suptitle(f'Party {i+1}')
             figH.show()
@@ -270,7 +298,7 @@ def main():
             eng.addpath('./Matlab')
             print("Polarisation measure:", eng.get_mean_polarisation(args.output))
         except:
-            warnings.warn("Failed to access matlab, so no polarisation measure.")
+            warnings.warn("Failed to access MATLAB, so no polarisation measure.")
 
     # Voter distribution
     if args.distribution:
