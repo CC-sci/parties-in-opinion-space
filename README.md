@@ -1,9 +1,11 @@
 This code models the motion of political parties trying to maximise their voters under a Hotelling-
-Downs framework. It aplies the techniques of statistical mechanics, since the situation is analogous to
+Downs framework. It applies the techniques of statistical mechanics, since the situation is analogous to
 an energy-minimisation problem. In particular, this code uses the Metropolis Monte Carlo algorithm.
 
-The programme can be run from a terminal with ```python main.py```, or in ipython ```run main```. In addition,
-the following options are available. For a four-party equilibrium choose p1 and p2 equal to 2 or 
+The programme can be run from a terminal with ```python main.py```, or in ipython ```run main```. This will
+produce plots of four parties moving along two policy axes. 
+
+In addition, the following options are available. For a four-party equilibrium set p1 and p2 equal to 2 or
 higher, for example.
 
 usage: ```main.py [-h] [-1d] [-o OUTPUT] [-H] [-S] [-D] [-t] [-M] [-n NUMBER] [-r] [-p1 TURNOUTPARAMETER]
@@ -21,7 +23,7 @@ options:
   -o OUTPUT, --output OUTPUT
                         the name of the output file to be overwritten/created (default: output.dat)
   -H, --nohistogram     supress histograms of the parties' positions (default: False)
-  -S, --scatter         show scatterplot of parties's past and final positions (default: False)
+  -S, --scatter         show scatterplot of parties' past and final positions (default: False)
   -D, --distribution    display plots of the voter distribution (default: False)
   -t, --tab             output tab seperated files for each party (default: False)
   -M, --matpol          run MATLAB routine to calculate polarisation (default: False)
