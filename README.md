@@ -2,11 +2,11 @@ This code models the motion of political parties trying to maximise their voters
 Downs framework. It applies the techniques of statistical mechanics, since the situation is analogous to
 an energy-minimisation problem. In particular, this code uses the Metropolis Monte Carlo algorithm.
 
-The programme can be run from a terminal with ```python main.py```, or in ipython ```run main```. This will
-produce plots of four parties moving along two policy axes. 
+The programme can be run from a terminal with ```python main.py```, or in ipython ```run main```. This
+will produce plots of four parties moving along two policy axes. 
 
-In addition, the following options are available. For a four-party equilibrium set p1 and p2 equal to 2 or
-higher, for example.
+In addition, the following options are available. For a four-party equilibrium set p1 and p2 equal to 2
+or higher, for example.
 
 usage: ```main.py [-h] [-1d] [-o OUTPUT] [-H] [-S] [-D] [-t] [-M] [-n NUMBER] [-r] [-p1 TURNOUTPARAMETER]
                [-p2 ACTIVISTPARAMETER] [-d {s,m,u}] [-s] [-v]
